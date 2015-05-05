@@ -255,12 +255,10 @@ function openid_connect_redirect_page($client_name) {
     // Everything is fine, proceed with the login.
     $tokens = $client->retrieveTokens($_GET['code']);
 
-
     if ($tokens) {
       // ID token and access tokens are retrieved, decode the ID token.
       $user_data = $client->decodeIdToken($tokens['id_token']);
       $userinfo = $client->retrieveUserInfo($tokens['access_token']);
-
       if ($userinfo) {
         // The sub ID is used by the login provider to identify the user. We
         // also register it in the `authmap` table.
@@ -324,9 +322,17 @@ function openid_connect_save_userinfo($account, $user_profile, $client_name) {
  * Logs in a user based on the sub-id returned by the login provider.
  */
 function openid_connect_login_user($sub, &$account, $email, $client_name) {
+
   if (!$account) {
     $account = openid_connect_create_user($sub, $email, $client_name);
   }
+  else
+  {
+    //TODO best point to use
+    // $out = openid_connect_get_user_authname($account->uid);
+    // print"<pre>";var_dump($out);print"</pre>";die();
+  }
+ 
   $form_state['uid'] = $account->uid;
   user_login_submit(array(), $form_state);
 }
@@ -335,14 +341,20 @@ function openid_connect_login_user($sub, &$account, $email, $client_name) {
  * Creates a user indicating sub-id and login provider.
  */
 function openid_connect_create_user($sub, $email, $client_name) {
+  // Custom modification for trabajo ba
+ 	$roles = user_roles(TRUE);
+	$roleID = array_search('postulante', $roles);
   $edit = array(
     'name' => $email,
     'mail' => $email,
     'status' => 1,
     'openid_connect_client' => $client_name,
     'openid_connect_sub' => $sub,
+    'roles'	=> array($roleID=>true)
   );
+  
   $account = user_save(NULL, $edit);
+
   return $account;
 }
 
