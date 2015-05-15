@@ -1,2 +1,2 @@
-# gcba_baid_connect
-Fork del proyecto de drupal openid connect
+# BAID OpenID Connect Drupal
+Cliente BAID OpenID Connect de la Ciudad de Buenos Aires
