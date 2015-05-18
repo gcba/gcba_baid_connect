@@ -187,7 +187,13 @@ function openid_connect_login_form_submit(&$form, &$form_state) {
  */
 function openid_connect_create_state_token() {
   $state = md5(rand());
-  $_SESSION['openid_connect_state'] = $state;
+  // $_SESSION['openid_connect_state'] = $state;
+  db_insert('openid_connect')
+  ->fields(array('state'))
+  ->values(array(
+    'state' => $state,
+  ))
+  ->execute();
   return $state;
 }
 
@@ -202,7 +208,15 @@ function openid_connect_create_state_token() {
  *   in the session.
  */
 function openid_connect_confirm_state_token($state_token) {
-  return $state_token == $_SESSION['openid_connect_state'];
+  $state = db_query('SELECT state FROM {openid_connect} WHERE state = :state', array(':state' => $state_token))->fetchField();
+  $found = FALSE;
+  if($state)
+  {
+     $found = $state == $state_token;
+     db_query('DELETE FROM {openid_connect} WHERE state = :state', array(':state' => $state_token));
+  }
+  return $found;
+  // return $state_token == $_SESSION['openid_connect_state'];
 }
 
 /**
@@ -218,8 +232,6 @@ function openid_connect_redirect_access() {
  * Page callback: Page whereto OpenID Connect login provider redirects.
  */
 function openid_connect_redirect_page($client_name) {
-  // Delete the state token, since it's already been confirmed.
-  unset($_SESSION['openid_connect_state']);
   // Get the destination from the session (than clean up after that, too), so
   // that we can redirect the user back from where they initiated the login.
   $destination = ltrim($_SESSION['openid_connect_destination'], '/');
@@ -253,6 +265,7 @@ function openid_connect_redirect_page($client_name) {
   else {
 
     // Everything is fine, proceed with the login.
+    //TODO The problem seems to be here
     $tokens = $client->retrieveTokens($_GET['code']);
 
 
@@ -260,16 +273,17 @@ function openid_connect_redirect_page($client_name) {
       // ID token and access tokens are retrieved, decode the ID token.
       $user_data = $client->decodeIdToken($tokens['id_token']);
       $userinfo = $client->retrieveUserInfo($tokens['access_token']);
-
       if ($userinfo) {
         // The sub ID is used by the login provider to identify the user. We
         // also register it in the `authmap` table.
         $account = openid_connect_user_load_by_sub($user_data['sub'], $client_name);
+
         openid_connect_login_user($user_data['sub'], $account, $userinfo['email'], $client_name);
         openid_connect_save_userinfo($account, $userinfo, $client_name);
       }
 
       module_invoke_all('openid_connect_post_authorize', $tokens, $destination);
+
       drupal_goto($destination);
     }
   }
@@ -429,8 +443,8 @@ function openid_connect_user_load_by_sub($sub, $client_name) {
     ->condition('module', 'openid_connect_' . $client_name);
 /*
 print $query;
-echo sprintf("authname:%s", $sub);
-echo sprintf("module:%s", $client_name);
+echo sprintf("authname: %s<br/>", $sub);
+echo sprintf("module: %s", $client_name);
 die();
 */
   $result = db_select('authmap', 'a')
@@ -605,4 +619,22 @@ function openid_connect_entity_property_info_alter(&$info) {
       'schema field' => 'timezone',
     );
   }
+}
+
+function openid_connect_cron() {
+    $cron_last = variable_get('openid_connect_cron_last', NULL);
+    $now = date('ymd', time());
+    if($cron_last != null)
+    {
+      if ( $cron_last != $now )
+      {
+        db_query("DELETE FROM openid_connect WHERE DATEDIFF(created_at, NOW()) < 0");
+        variable_set('openid_connect_cron_last', date('ymd', time()));
+      }
+    }
+    else
+    {
+      db_query("DELETE FROM openid_connect WHERE DATEDIFF(created_at, NOW()) < 0");
+      variable_set('openid_connect_cron_last', date('ymd', time()));
+    }
 }

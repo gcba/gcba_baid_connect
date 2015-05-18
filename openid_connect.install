@@ -11,6 +11,7 @@
 function openid_connect_uninstall() {
   db_delete('variable')->condition('name', 'openid_connect%', 'LIKE')->execute();
   cache_clear_all('variables', 'cache_bootstrap');
+	db_query("DROP TABLE IF EXISTS {openid_connect}");
 }
 
 /**
@@ -27,4 +28,12 @@ function openid_connect_update_7100() {
     );
     variable_set('openid_connect_client_' . $client['name'], $new_configuration);
   }
+}
+
+function openid_connect_install() {
+	db_query("CREATE TABLE `openid_connect` (
+ `state` varchar(255) NOT NULL,
+ `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+ KEY `ix_state` (`state`(4)) COMMENT 'The index for state'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Openid connect state'");
 }
