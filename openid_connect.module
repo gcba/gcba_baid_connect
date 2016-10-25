@@ -356,7 +356,8 @@ function openid_connect_create_user($sub, $email, $client_name) {
     'openid_connect_client' => $client_name,
     'openid_connect_sub' => $sub,
   );
-  $account = user_save(NULL, $edit);
+  $user = user_load_by_mail($email);
+  $account = user_save(($user)? $user : null, $edit);
   return $account;
 }
 
