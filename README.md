@@ -1,2 +1,4 @@
 # BAID OpenID Connect Drupal
-Cliente BAID OpenID Connect de la Ciudad de Buenos Aires
+Modulo de drupal para poder loguearse con BAID del Gobierno de la Ciudad de Buenos Aires
+
+Dirección General de Gestión Digital
